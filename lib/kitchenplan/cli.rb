@@ -14,8 +14,8 @@ module Kitchenplan
     LONGDESC
     def setup(gitrepo=nil, targetdir='/opt')
       logo
-      install_clt unless `xcode-select --print-path`
-      if gitrepo
+      install_clt unless File.exist? "/Library/Developer/CommandLineTools/usr/bin/clang"
+      if gitrepo || File.exists?("#{targetdir}/kitchenplan")
         fetch(gitrepo, targetdir)
       else
         has_config = yes?('Do you have a config repository? [y,n]', :green)
@@ -108,7 +108,7 @@ module Kitchenplan
 
       def send_ping
         print_step('Sending a ping to Google Analytics')
-        require 'Gabba'
+        require 'gabba'
         Gabba::Gabba.new('UA-46288146-1', 'github.com').event('Kitchenplan', 'Run', ENV['USER'])
       end
 
@@ -197,9 +197,13 @@ module Kitchenplan
         print_step('Installing XCode CLT')
         osx_ver = dorun('sw_vers -productVersion | awk -F "." \'{print $2}\'', true).to_i
         if osx_ver >= 9
+          if osx_ver >= 10
+            print_failure('Until CLT is available via softwareupdate, please install both the CLT and XCode from https://developer.apple.com')
+          end
           dorun('touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress')
           prod = dorun('softwareupdate -l | grep -B 1 "Developer" | head -n 1 | awk -F"*" \'{print $2}\'', true)
-          dorun("softwareupdate -i #{prod} -v")
+          dorun("softwareupdate -i #{prod.chomp} -v")
+          #dorun("sudo xcodebuild -license")
         else
           dmg = nil
           if osx_ver == 7
